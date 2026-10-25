@@ -1,0 +1,48 @@
+{
+  "name": "drop",
+  "private": true,
+  "license": "MIT",
+  "type": "module",
+  "packageManager": "pnpm@10.34.6",
+  "scripts": {
+    "dev": "concurrently -n app,worker \"vite build --watch --config app/vite.config.ts\" \"wrangler dev\"",
+    "build": "vite build --config app/vite.config.ts",
+    "cf-typegen": "wrangler types",
+    "typecheck": "wrangler types && tsc -p tsconfig.json && tsc -p tsconfig.bun.json && tsc -p app/tsconfig.json",
+    "lint": "biome check .",
+    "format": "biome format --write .",
+    "test": "pnpm build && vitest run && pnpm test:bun",
+    "test:bun": "bun --bun vitest run --config vitest.bun.config.ts",
+    "cli": "bun cli/main.ts",
+    "build:cli": "pnpm build && bun scripts/build-cli.ts",
+    "migrate:local": "wrangler d1 migrations apply drop-db --local",
+    "migrate:remote": "wrangler d1 migrations apply drop-db --remote",
+    "deploy:config": "bun scripts/deploy-config.ts",
+    "deploy:worker": "pnpm build && bun scripts/deploy-config.ts && wrangler deploy --config wrangler.deploy.json"
+  },
+  "dependencies": {
+    "@dnd-kit/core": "^6.3.1",
+    "@dnd-kit/sortable": "^10.0.0",
+    "@dnd-kit/utilities": "^3.2.2",
+    "drizzle-orm": "^0.45.2",
+    "hono": "^4.13.11"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.5.9",
+    "@cloudflare/vitest-pool-workers": "^0.22.0",
+    "@types/bun": "^1.4.4",
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.2.4",
+    "@vitejs/plugin-react": "^6.1.0",
+    "concurrently": "^10.0.5",
+    "diff": "^9.0.0",
+    "fflate": "^0.8.3",
+    "lucide-react": "^1.33.0",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
+    "typescript": "^7.0.2",
+    "vite": "^8.2.4",
+    "vitest": "^4.1.12",
+    "wrangler": "^4.124.0"
+  }
+}

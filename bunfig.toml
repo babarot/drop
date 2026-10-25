@@ -1,0 +1,4 @@
+# How modules load when running on Bun (drop serve, the CLI, the single binary). As with the rules
+# in wrangler.toml, read docs/theming.md (the content of /llms.txt) as text
+[loader]
+".md" = "text"

@@ -1,0 +1,1413 @@
+/* The theme tokens (CSS variables on :root), the :focus-visible ring and the .glass class are
+   defined in shared/theme.ts and injected into index.html at build time (vite.config.ts) */
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Hiragino Sans", sans-serif;
+  transition:
+    background 0.25s ease,
+    color 0.25s ease;
+}
+
+/* Turn off the glass blur while an overlay (sheet/dialog) is shown. A backdrop-filter layer
+   overlapping a composited scroll such as an iframe hits a browser bug that flashes white on
+   recomposite, and the blur is barely visible over the dimmed background anyway */
+body.overlay-open .glass {
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+.container {
+  max-width: 880px;
+  margin: 0 auto;
+  padding: 24px 20px 64px;
+}
+
+.brand {
+  position: sticky;
+  top: 24px;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 24px;
+  padding: 10px 16px;
+  border-radius: 14px;
+}
+
+/* The brand is the icon only (no "drop" text). The green accent serves as the brand mark */
+.brand h1 {
+  display: inline-flex;
+  align-items: center;
+  margin: 0;
+  color: var(--accent);
+}
+
+.brand .count {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+/* Icon buttons sitting on the header surface are ghosts (no outline + round background on hover) */
+.theme-toggle,
+.brand-icon {
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 16px;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+  transition:
+    background 0.15s ease,
+    transform 0.15s ease;
+}
+
+/* First of the right-aligned group. The following icons are spaced by gap */
+.theme-toggle {
+  margin-left: auto;
+}
+
+.theme-toggle:hover,
+.brand-icon:hover {
+  background: var(--bg-hover);
+  transform: scale(1.04);
+}
+
+.theme-toggle:active,
+.brand-icon:active {
+  transform: scale(0.97);
+}
+
+.dropzone {
+  display: block;
+  width: 100%;
+  background: transparent;
+  font: inherit;
+  border: 2px dashed var(--border-strong);
+  border-radius: 12px;
+  padding: 48px 20px;
+  text-align: center;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition:
+    border-color 0.15s,
+    box-shadow 0.15s,
+    color 0.15s;
+}
+
+.dropzone.over,
+.dropzone:hover {
+  border-color: var(--accent);
+  color: var(--text);
+  box-shadow: 0 0 24px var(--accent-glow);
+}
+
+.dropzone .icon {
+  font-size: 28px;
+  display: block;
+  margin-bottom: 8px;
+}
+
+.dropzone input {
+  display: none;
+}
+
+.error {
+  margin: 12px 0 0;
+  color: var(--danger);
+  font-size: 13px;
+}
+
+/* Upload queue (right below the Dropzone). Per-entry state is on each row, aggregate progress in
+   the pill on top */
+.upload-queue {
+  margin-top: 12px;
+}
+
+.upload-queue ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.upload-progress {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 8px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.spinner {
+  flex-shrink: 0;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 2px solid var(--border-strong);
+  border-top-color: var(--text);
+  animation: upload-spin 0.8s linear infinite;
+}
+
+@keyframes upload-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.upload-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  background: var(--bg-elevated);
+  font-size: 13px;
+  color: var(--text);
+}
+
+.upload-item .name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Keep long titles from overflowing the row (truncated, sharing the space with the filename) */
+.upload-item .replace-target {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.upload-item .spinner {
+  margin-left: auto;
+}
+
+.upload-item.error {
+  border-color: var(--danger);
+}
+
+.upload-item .message {
+  margin-left: auto;
+  flex-shrink: 0;
+  color: var(--danger);
+  font-size: 12px;
+}
+
+.search {
+  margin: 24px 0 16px;
+}
+
+.search input {
+  width: 100%;
+  padding: 10px 14px;
+  border-radius: 8px;
+  border: 1px solid var(--border-strong);
+  background: var(--bg-elevated);
+  color: var(--text);
+  font-size: 14px;
+  outline: none;
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.search input:focus {
+  border-color: var(--ring);
+  box-shadow: 0 0 0 3px var(--ring-soft);
+}
+
+/* Folder bar: a horizontal row of pills between the search and the grid. Scrolls horizontally on
+   overflow */
+.folder-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 16px;
+  padding: 2px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.folder-bar::-webkit-scrollbar {
+  display: none;
+}
+
+/* A pill is a div (holding the select button and ⋮). It is also the dnd-kit sortable handle */
+.folder-pill {
+  position: relative;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  height: 30px;
+  border-radius: 8px;
+  border: 1px solid var(--border-strong);
+  background: var(--bg-elevated);
+  color: var(--text);
+  white-space: nowrap;
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease,
+    background 0.15s ease;
+}
+
+.folder-pill:hover {
+  background: var(--bg-hover);
+}
+
+/* dnd-kit puts a tabIndex on the sortable div, but focus really belongs to the inner
+   button, so no ring on the outer frame */
+.folder-pill:focus-visible {
+  outline: none;
+}
+
+.folder-pill-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 100%;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.folder-pill svg {
+  flex-shrink: 0;
+  opacity: 0.75;
+}
+
+.folder-pill .n {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.folder-pill.selected {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--accent-glow);
+}
+
+.folder-pill.selected .n {
+  color: var(--accent);
+}
+
+/* all and unfiled are views, not real Folders, so they get no outline (outlined = a thing you
+   can create, delete and put into; ghost = a viewpoint). Selected and drag-over colors use the
+   same language as normal pills (.drag-over wins later and shows the ring) */
+.folder-pill.view {
+  border-color: transparent;
+  background: transparent;
+}
+
+.folder-pill.view:hover {
+  background: var(--bg-hover);
+}
+
+.folder-pill.view.selected {
+  border-color: transparent;
+  background: var(--accent-glow);
+}
+
+/* When a dragged site card is over it (= it can be dropped here) */
+.folder-pill.drag-over {
+  border-color: var(--accent);
+  color: var(--accent);
+  box-shadow:
+    0 0 0 3px var(--accent-glow),
+    0 0 16px var(--accent-glow);
+}
+
+/* The selected pill's ⋮ (rename / delete menu) */
+.folder-pill-menu {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 100%;
+  margin-left: -6px;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+
+/* New folder (+) is a dashed ghost */
+.folder-pill.add {
+  width: 30px;
+  justify-content: center;
+  border-style: dashed;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 0;
+}
+
+.folder-pill.add:hover {
+  color: var(--text);
+}
+
+.folder-divider {
+  flex-shrink: 0;
+  width: 1px;
+  height: 18px;
+  margin: 0 4px;
+  background: var(--border-strong);
+}
+
+/* Fixed drop-target dock shown at the bottom of the screen only while a site is dragged. It
+   shares the toast's spot (z:110), but the toast is not used during a drag, so they do not
+   conflict */
+.drop-dock {
+  position: fixed;
+  bottom: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 105;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px;
+  border-radius: 14px;
+  max-width: calc(100vw - 24px);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.drop-dock::-webkit-scrollbar {
+  display: none;
+}
+
+/* Pills in the dock are drop targets, not buttons, so the label is a span (with the default
+   cursor) */
+.dock-pill .folder-pill-label {
+  cursor: default;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 12px;
+}
+
+.card {
+  position: relative;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  transition:
+    transform 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--glass-shadow);
+}
+
+/* The hover transform creates a stacking context, so
+   bring the card with an open menu in front of its neighbors */
+.card:has(.menu-list) {
+  z-index: 2;
+}
+
+/* The real card during DnD (the DragOverlay's .drag-preview follows the cursor) */
+.card.dragging {
+  opacity: 0.4;
+}
+
+/* dnd-kit puts a tabIndex on the card, but the actual controls are the buttons inside */
+.card:focus-visible {
+  outline: none;
+}
+
+/* The owning Folder shown in the card meta and the conflict dialog.
+   The other meta items (size, date, etc.) are plain text, so make this a small badge with a
+   background to set it apart visually and keep it from sinking into the muted text color.
+   A rounded pill + border-strong is the vocabulary of .btn (open/copy url), so avoid it and
+   make it look like a square, non-clickable tag */
+.folder-tag {
+  display: inline-flex;
+  align-items: center;
+  align-self: flex-start;
+  gap: 3px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: var(--bg-hover);
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.folder-tag svg {
+  flex-shrink: 0;
+  opacity: 0.75;
+}
+
+/* Site preview shown in the DragOverlay (a small title-only card) */
+.drag-preview {
+  max-width: 240px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--bg-elevated);
+  box-shadow: var(--glass-shadow);
+  font-size: 13px;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: grabbing;
+}
+
+/* Folder pill preview shown in the DragOverlay */
+.drag-preview-pill {
+  gap: 6px;
+  padding: 0 12px;
+  cursor: grabbing;
+}
+
+/* The title wraps to at most 2 lines and the rest is truncated (it is a button, so restore a
+   text look) */
+.card .title {
+  border: 0;
+  background: transparent;
+  padding: 0;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+  color: var(--text);
+  text-decoration: none;
+}
+
+.card .title:hover {
+  text-decoration: underline;
+}
+
+/* stretched link: make the whole card the title anchor's click area */
+.card .title::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+}
+
+/* Put the action buttons in front of the anchor so it does not steal their clicks */
+.card .actions {
+  position: relative;
+  z-index: 1;
+}
+
+.card .meta {
+  font-size: 12px;
+  color: var(--text-muted);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+}
+
+/* Do not wrap inside a meta item (wrap per item if at all) */
+.card .meta span {
+  white-space: nowrap;
+}
+
+.card .meta .published {
+  color: var(--accent);
+}
+
+.card .actions {
+  display: flex;
+  gap: 6px;
+  /* Align the action buttons to the bottom even when neighboring cards have different title line
+     counts */
+  margin-top: auto;
+  padding-top: 4px;
+}
+
+/* The copy url split button. The main button is the normal URL, the chevron is "choose how to
+   share". Used only on cards: in preview-sheet and the /p/:id bar, copy url is already an item
+   inside a menu, and splitting it would nest menus (ADR-002) */
+.split {
+  position: relative;
+  display: inline-flex;
+}
+
+/* Make the two look like one part: square off the touching corners and overlap the borders.
+   Without a chevron (published sites) it stays a normal pill */
+.split:has(.split-toggle) .btn:first-child {
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+.split .split-toggle {
+  width: 22px;
+  min-width: 22px;
+  padding: 0;
+  margin-left: -1px;
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+  color: var(--text-muted);
+}
+
+/* .btn scales on hover, but scaling a split button makes the two look split apart.
+   It is one continuous part, so respond with the background instead of scaling */
+.split .btn:hover,
+.split .btn:active {
+  transform: none;
+  background: var(--bg-hover);
+}
+
+/* Placeholder during the first load. It mimics the height of a real card's layout
+   (title/meta/actions) to limit layout shift when the fetch completes */
+.card.skeleton {
+  pointer-events: none;
+}
+
+.card.skeleton:hover {
+  transform: none;
+  box-shadow: none;
+}
+
+.skeleton-line {
+  border-radius: 6px;
+  background: var(--bg-hover);
+  animation: skeleton-pulse 1.4s ease-in-out infinite;
+}
+
+/* One title line (14px * 1.4) */
+.skeleton-title {
+  height: 20px;
+  width: 70%;
+}
+
+.skeleton-meta {
+  height: 12px;
+  width: 55%;
+}
+
+/* Same bottom alignment as .card .actions + button height (26px) */
+.skeleton-actions {
+  height: 26px;
+  width: 60%;
+  margin-top: auto;
+}
+
+@keyframes skeleton-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.45;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton-line {
+    animation: none;
+  }
+}
+
+/* Buttons share the round-pill language of the shell's bar */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 26px;
+  padding: 0 12px;
+  border-radius: 13px;
+  font-size: 11px;
+  line-height: 1;
+  border: 1px solid var(--border-strong);
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+  font-family: inherit;
+  text-decoration: none;
+  /* Labels do not wrap inside buttons (when space runs out, the message gives way) */
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition:
+    transform 0.15s ease,
+    border-color 0.15s ease,
+    background 0.15s ease;
+}
+
+.btn:hover {
+  transform: scale(1.04);
+}
+
+.btn:active {
+  transform: scale(0.97);
+}
+
+.btn.icon {
+  width: 26px;
+  min-width: 26px;
+  padding: 0;
+}
+
+.btn.danger {
+  color: var(--danger);
+}
+
+.btn.danger:hover {
+  background: var(--danger-bg);
+  border-color: var(--danger-border);
+}
+
+.empty {
+  color: var(--text-muted);
+  text-align: center;
+  padding: 48px 0;
+  font-size: 14px;
+}
+
+.menu {
+  position: relative;
+}
+
+/* The card menu is a panel (favoring scannable choices and clear ownership).
+   Its rounding, shadow and opaque background follow the same language as the pills.
+   It overlaps other cards, so no translucency (glass) */
+.menu-list {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 8px);
+  min-width: 132px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px;
+  border-radius: 12px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  box-shadow: var(--glass-shadow);
+  z-index: 5;
+}
+
+.menu-item {
+  display: block;
+  text-align: left;
+  font-size: 12px;
+  padding: 7px 10px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+  font-family: inherit;
+  text-decoration: none;
+  transition: background 0.15s ease;
+}
+
+.menu-item:hover {
+  background: var(--bg-hover);
+}
+
+.menu-item.danger {
+  color: var(--danger);
+}
+
+.menu-item.danger:hover {
+  background: var(--danger-bg);
+}
+
+/* Informational menu items (such as an asset's canonical ASCII name). Raw copyable values, so
+   monospace and subdued */
+.menu-item.mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+/* Prevent misclicks: separate the danger item with a rule */
+.menu-divider {
+  border: 0;
+  height: 1px;
+  margin: 4px 6px;
+  background: var(--border);
+}
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: var(--overlay);
+  display: grid;
+  place-items: center;
+  z-index: 100;
+}
+
+.dialog {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 20px;
+  width: min(440px, 90vw);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  box-shadow: var(--glass-shadow);
+}
+
+.dialog h2 {
+  font-size: 15px;
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dialog-note {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin: 0;
+}
+
+.choice {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 100%;
+  text-align: left;
+  padding: 12px 14px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text);
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.choice:hover {
+  border-color: var(--text-muted);
+}
+
+.choice.primary {
+  border-color: var(--accent);
+}
+
+.choice.primary:hover,
+.choice.primary:focus-visible {
+  box-shadow: 0 0 12px var(--accent-glow);
+}
+
+.choice-title {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.choice-meta {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+/* Choices in the move dialog (icon + Folder name + current location label) */
+.choice-title.move-choice {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.choice-current {
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--text-muted);
+}
+
+.choice:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.choice:disabled:hover {
+  border-color: var(--border);
+}
+
+.dialog-cancel {
+  align-self: flex-end;
+}
+
+/* Version history dialog: version list on the left, preview/diff on the right */
+.dialog.history {
+  width: min(880px, 94vw);
+  height: min(640px, 88vh);
+}
+
+.history-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.history-body {
+  display: flex;
+  gap: 12px;
+  flex: 1;
+  min-height: 0;
+}
+
+.history-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  width: 230px;
+  flex: none;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.history-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 100%;
+  text-align: left;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text);
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.history-item:hover {
+  border-color: var(--text-muted);
+}
+
+.history-item.selected {
+  border-color: var(--accent);
+}
+
+.history-item-date {
+  font-size: 12px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.history-current {
+  font-size: 10px;
+  font-weight: 400;
+  color: var(--accent);
+  border: 1px solid var(--accent);
+  border-radius: 8px;
+  padding: 0 6px;
+}
+
+.history-item-meta {
+  font-size: 11px;
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.history-detail {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.history-tabs {
+  display: flex;
+  gap: 6px;
+}
+
+.history-tabs .btn.active {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* The frame (wrap) owns the look and size, and the iframe is just an absolute, scaled-down canvas
+   (out of the flow, so its unscaled height does not affect the parent's size) */
+.history-preview-wrap {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+}
+
+.history-preview {
+  position: absolute;
+  top: 0;
+  left: 0;
+  border: 0;
+  transform-origin: top left;
+}
+
+.history-diff {
+  flex: 1;
+  margin: 0;
+  overflow: auto;
+  font-size: 11px;
+  line-height: 1.5;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px;
+  background: var(--bg);
+}
+
+/* Per-file diff: the changed files listed on top, the selected file's line diff below */
+.tree-diff {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.tree-diff-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 45%;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+.tree-diff-item {
+  display: flex;
+  gap: 8px;
+  width: 100%;
+  text-align: left;
+  padding: 3px 8px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: none;
+  color: var(--text);
+  cursor: pointer;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+}
+
+.tree-diff-item:hover {
+  background: var(--bg-hover);
+}
+
+.tree-diff-item.selected {
+  border-color: var(--accent);
+}
+
+.tree-diff-mark {
+  width: 1ch;
+  flex-shrink: 0;
+  color: var(--text-muted);
+}
+
+.tree-diff-item.added .tree-diff-mark {
+  color: var(--accent);
+}
+
+.tree-diff-item.removed .tree-diff-mark {
+  color: var(--danger);
+}
+
+.tree-diff-path {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.diff-add {
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+}
+
+.diff-del {
+  background: var(--danger-bg);
+  color: var(--danger);
+}
+
+.diff-skip {
+  color: var(--text-muted);
+}
+
+.history-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.history-footer .dialog-note {
+  margin-right: auto;
+}
+
+/* Do not let the button wrap even when the note takes up the width */
+.history-footer .btn {
+  flex: none;
+  white-space: nowrap;
+}
+
+@media (max-width: 640px) {
+  .history-body {
+    flex-direction: column;
+  }
+  .history-list {
+    width: 100%;
+    max-height: 160px;
+    flex: none;
+  }
+}
+
+/* Preview sheet: an overlay panel that slides in from the right. Its content is the same
+   Page-serving iframe as the production shell, so the panel only has the frame and header */
+.sheet-overlay {
+  position: fixed;
+  inset: 0;
+  background: var(--overlay);
+  z-index: 100;
+  animation: sheet-fade 0.25s ease;
+}
+
+.sheet {
+  position: fixed;
+  inset: 0 0 0 auto;
+  width: min(1200px, 80vw);
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-elevated);
+  border-left: 1px solid var(--border);
+  box-shadow: var(--glass-shadow);
+  animation: sheet-slide 0.3s ease;
+}
+
+.sheet-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+.sheet-header h2 {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  font-size: 14px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sheet-status {
+  font-size: 12px;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.sheet-status.published {
+  color: var(--accent);
+}
+
+/* Stack of grouped actions: same look and feel as the admin bar of the /p/:id shell
+   (views/shell.tsx). Pills stack vertically under the trigger (a different look from the
+   panel-style .menu-list) */
+.control-stack {
+  position: relative;
+}
+
+/* Header actions do not wrap even when space is short; the title shrinks instead */
+.sheet-header .btn,
+.sheet-header .control-stack {
+  flex: none;
+  white-space: nowrap;
+}
+
+.stack-items {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+  z-index: 5;
+}
+
+/* The look of .pill itself (including the .icon/.danger variants) is pageMenuPillCss in
+   shared/page-menu.ts (shared with views/shell.tsx, injected by injectTheme in vite.config.ts) */
+.control-stack.open .pill.icon {
+  color: var(--text-muted);
+  background: var(--bg-hover);
+}
+
+.sheet-note {
+  padding: 16px;
+  margin: 0;
+}
+
+.sheet-frame {
+  flex: 1;
+  width: 100%;
+  border: 0;
+  background: var(--bg);
+}
+
+.sheet-handle {
+  display: none;
+}
+
+@keyframes sheet-slide {
+  from {
+    transform: translateX(100%);
+  }
+}
+
+@keyframes sheet-slide-up {
+  from {
+    transform: translateY(100%);
+  }
+}
+
+@keyframes sheet-fade {
+  from {
+    opacity: 0;
+  }
+}
+
+@media (max-width: 640px) {
+  .sheet {
+    inset: auto 0 0 0;
+    width: 100%;
+    height: 90svh;
+    border-left: 0;
+    border-top: 1px solid var(--border);
+    border-radius: 16px 16px 0 0;
+    animation-name: sheet-slide-up;
+  }
+
+  .sheet-handle {
+    display: flex;
+    justify-content: center;
+    padding: 10px 0 2px;
+    flex-shrink: 0;
+    cursor: grab;
+  }
+
+  /* Where the pull-down gesture starts, do not compete with the browser's scroll detection */
+  .sheet-handle,
+  .sheet-header {
+    touch-action: none;
+  }
+
+  .sheet-handle::after {
+    content: "";
+    width: 36px;
+    height: 4px;
+    border-radius: 2px;
+    background: var(--text-muted);
+    opacity: 0.4;
+  }
+
+  /* At full width there is not enough room, so collapse the badge (the publish/unpublish button
+     doubles as the state) */
+  .sheet-status {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sheet,
+  .sheet-overlay {
+    animation: none;
+  }
+}
+
+/* File tree dialog: drop area on top, the list by Directory below */
+.dialog.files {
+  width: min(600px, 94vw);
+  /* Fix the height: so the dialog is not re-centered as the list grows and shrinks, moving the ✕ */
+  height: min(680px, 88vh);
+}
+
+.dialog.files.over {
+  outline: 2px dashed var(--accent);
+  outline-offset: -6px;
+}
+
+.files-drop {
+  display: block;
+  width: 100%;
+  background: transparent;
+  font: inherit;
+  font-size: 12px;
+  border: 2px dashed var(--border-strong);
+  border-radius: 8px;
+  padding: 18px 12px;
+  text-align: center;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition:
+    border-color 0.15s,
+    color 0.15s;
+}
+
+.files-drop:hover {
+  border-color: var(--accent);
+  color: var(--text);
+}
+
+.files-drop:disabled {
+  cursor: default;
+  border-color: var(--border);
+}
+
+.files-list {
+  list-style: none;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  overflow-y: auto;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 4px 0;
+}
+
+.files-item,
+.files-dir-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 3px 8px;
+  font-size: 12px;
+}
+
+.files-item:hover,
+.files-dir-toggle:hover {
+  background: var(--bg-hover);
+}
+
+.files-dir.over {
+  outline: 2px dashed var(--accent);
+  outline-offset: -2px;
+  border-radius: 6px;
+}
+
+.files-dir-toggle {
+  width: 100%;
+  border: 0;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  font-size: 12px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.files-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.files-meta {
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.files-actions {
+  margin-left: auto;
+  display: flex;
+  gap: 4px;
+  flex: none;
+}
+
+.toast {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 13px;
+  z-index: 110;
+  max-width: calc(100vw - 32px);
+}
+
+/* The message takes the remaining width. Long titles are clamped to 2 lines and truncated,
+   so they do not squeeze the buttons (nowrap + shrink:0) */
+.toast-message {
+  flex: 1;
+  min-width: 0;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 480px) {
+  .container {
+    padding: 16px 12px 48px;
+  }
+
+  .brand {
+    top: 12px;
+  }
+
+  .dropzone {
+    padding: 32px 16px;
+  }
+
+  /* Stretch the toast to the full screen width instead of its content width, maximizing the
+     message area */
+  .toast {
+    width: calc(100vw - 24px);
+  }
+}

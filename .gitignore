@@ -1,0 +1,14 @@
+node_modules/
+app/dist/
+.wrangler/
+.dev.vars
+*.log
+worker-configuration.d.ts
+# Throwaway UI mockups made to agree on a design
+tmp-*.html
+
+# The single binary built by pnpm build:cli, and its entry point
+dist/
+
+# The deploy config generated from repository variables (scripts/deploy-config.ts)
+wrangler.deploy.json

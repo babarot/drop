@@ -1,0 +1,97 @@
+name: App
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  # Serialize deploys on consecutive pushes to main (wait for in-progress runs, do not cancel them).
+  # PRs have a different ref, so they are in a separate group and unaffected.
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  ci:
+    name: Verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+      # The pnpm version comes from packageManager in package.json
+      - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6.0.9
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: 24
+          cache: pnpm
+      # Tests run on the Bun backend as well as the Workers backend (pnpm test:bun)
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version: 1.4.4
+      - run: pnpm install --frozen-lockfile
+      # typecheck generates worker-configuration.d.ts with wrangler types, then runs tsc
+      - run: pnpm typecheck
+      - run: pnpm lint
+      # test builds, then runs vitest (the test script in package.json)
+      - run: pnpm test
+      # Check the single binary (drop serve and the CLI) builds. test already built the admin SPA
+      - run: bun scripts/build-cli.ts
+
+  deploy:
+    name: Deploy
+    # Deploys only where the instance is configured (repository variables, ADR-005); a fork without
+    # them runs Verify only
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.D1_DATABASE_ID != ''
+    needs: [ci]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+      # The pnpm version comes from packageManager in package.json
+      - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6.0.9
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: 24
+          cache: pnpm
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version: 1.4.4
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+      # wrangler.toml is neutral; write wrangler.deploy.json with this instance's values. It fails
+      # instead of deploying when a required variable is missing
+      - name: Build the deploy config
+        run: bun scripts/deploy-config.ts
+        env:
+          WORKER_NAME: ${{ vars.WORKER_NAME }}
+          DROP_DOMAIN: ${{ vars.DROP_DOMAIN }}
+          D1_DATABASE_ID: ${{ vars.D1_DATABASE_ID }}
+          D1_DATABASE_NAME: ${{ vars.D1_DATABASE_NAME }}
+          R2_BUCKET: ${{ vars.R2_BUCKET }}
+          DROP_AUTH: ${{ vars.DROP_AUTH }}
+          ACCESS_TEAM_DOMAIN: ${{ vars.ACCESS_TEAM_DOMAIN }}
+          ACCESS_AUD: ${{ vars.ACCESS_AUD }}
+      # Apply any new migrations to the production D1 automatically. Idempotent.
+      # Only additive migrations may ship in a single push (split breaking changes into
+      # expand -> deploy -> contract)
+      - name: Apply D1 migrations (production)
+        run: pnpm exec wrangler d1 migrations apply DB --remote --config wrangler.deploy.json
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      - name: Deploy Worker
+        run: pnpm exec wrangler deploy --config wrangler.deploy.json
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}

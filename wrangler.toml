@@ -1,0 +1,43 @@
+name = "drop"
+main = "src/index.ts"
+compatibility_date = "2026-08-01"
+# No domain here: wrangler.toml is the neutral config used by local development and tests. A
+# deployment gets its domain, D1 id and admin authentication from scripts/deploy-config.ts (ADR-005)
+
+[assets]
+directory = "app/dist"
+binding = "ASSETS"
+run_worker_first = ["/api/*", "/p/*", "/sites", "/sites/*", "/pages", "/pages/*", "/", "/llms.txt", "/login", "/logout", "!/sites/assets/*"]
+
+# Import .md files as strings so the worker can serve docs/theming.md as /llms.txt
+[[rules]]
+type = "Text"
+globs = ["**/*.md"]
+fallthrough = true
+
+# Other projects tend to take 8787, so pin local dev to 8788
+[dev]
+port = 8788
+
+[observability]
+enabled = true
+head_sampling_rate = 1
+
+[[d1_databases]]
+binding = "DB"
+database_name = "drop-db"
+# Placeholder for local development and tests; a deployment sets D1_DATABASE_ID
+database_id = "00000000-0000-4000-8000-000000000000"
+
+[[r2_buckets]]
+binding = "BUCKET"
+bucket_name = "drop-files"
+
+[vars]
+# Admin authentication: "access" (Cloudflare Access) or "token" (drop's own token; set
+# DROP_ADMIN_TOKEN and DROP_SESSION_SECRET with wrangler secret). Otherwise no admin can sign in
+# A deployment sets it with DROP_AUTH (and ACCESS_TEAM_DOMAIN / ACCESS_AUD for "access")
+AUTH = "token"
+
+# Register PREVIEW_SECRET with wrangler secret put PREVIEW_SECRET
+# For local development, set ENVIRONMENT=development in .dev.vars
