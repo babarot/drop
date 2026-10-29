@@ -37,12 +37,26 @@ export async function listSites(
   const params = new URLSearchParams()
   if (q !== '') params.set('q', q)
   if (folder !== null) params.set('folder', folder)
-  const res = await ensureOk(await fetch(`/api/sites?${params}`, { headers }))
-  return res.json()
+  // The API returns at most PAGE_SIZE per call. Fetch the first page to learn the total, then the
+  // rest in parallel
+  const page = async (offset: number): Promise<SiteListResponse> => {
+    const p = new URLSearchParams(params)
+    p.set('limit', String(PAGE_SIZE))
+    p.set('offset', String(offset))
+    const res = await ensureOk(await fetch(`/api/sites?${p}`, { headers }))
+    return res.json()
+  }
+  const first = await page(0)
+  const offsets = []
+  for (let o = PAGE_SIZE; o < first.total; o += PAGE_SIZE) offsets.push(o)
+  const rest = await Promise.all(offsets.map(page))
+  return { sites: [first, ...rest].flatMap((r) => r.sites), total: first.total }
 }
 
-// For matching re-drops (exact sourceName match, across Folders). listSites filters only the first
-// 50, missing same-named sites from the 51st on, so this uses its own route
+const PAGE_SIZE = 100
+
+// For matching re-drops (exact sourceName match, across Folders). Fetching the whole list just to
+// match a name is wasteful, so this uses its own route
 export async function findSitesBySourceName(sourceName: string): Promise<SiteMeta[]> {
   const params = new URLSearchParams({ sourceName })
   const res = await ensureOk(await fetch(`/api/sites?${params}`, { headers }))

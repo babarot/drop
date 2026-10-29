@@ -277,9 +277,8 @@ export function App() {
   }, [])
 
   // Match drafts before sending. They are matched against all sites regardless of the search and
-  // Folder filters. The list API's first 50 (limit) would miss same-named sites from the 51st on,
-  // so an exact sourceName route is used. Directories are looked up by several names
-  // (SiteDraft.matchNames)
+  // Folder filters, so an exact sourceName route is used instead of the list. Directories are
+  // looked up by several names (SiteDraft.matchNames)
   const processDrafts = useCallback(
     async (drafts: SiteDraft[]) => {
       if (drafts.length === 0) return
