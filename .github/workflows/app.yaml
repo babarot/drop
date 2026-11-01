@@ -50,6 +50,9 @@ jobs:
     # them runs Verify only
     if: github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.D1_DATABASE_ID != ''
     needs: [ci]
+    # The Cloudflare secrets live in this environment, limited to main, so other jobs and branches
+    # cannot read them
+    environment: production
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:

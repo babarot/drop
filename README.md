@@ -96,7 +96,9 @@ ADR-005), and the GitHub Actions workflow does that for you.
    | `WORKER_NAME`, `D1_DATABASE_NAME`, `R2_BUCKET` | optional, if you chose other names |
 
    Secrets: `CLOUDFLARE_API_TOKEN` (with permission to edit Workers, D1 and R2)
-   and `CLOUDFLARE_ACCOUNT_ID`.
+   and `CLOUDFLARE_ACCOUNT_ID`. The deploy job runs in the `production`
+   environment, so put them there and limit its deployment branches to `main`
+   (repository secrets also work, but every job can read those).
 5. Push to `main`. The workflow runs the tests, applies the D1 migrations and
    deploys. Without `D1_DATABASE_ID` it only runs the tests.
 
