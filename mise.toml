@@ -1,0 +1,7 @@
+# Tools for developing drop: mise install sets them up, and CI installs the same ones
+# (jdx/mise-action). Keep pnpm in step with packageManager in package.json.
+
+[tools]
+node = "24"
+pnpm = "10.34.6"
+bun = "1.4.4"
