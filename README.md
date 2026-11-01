@@ -192,6 +192,8 @@ their own syncing conflicts with drop's.
 
 ## Development
 
+Node, pnpm and Bun come from `mise.toml`: run `mise install` first.
+
 ```sh
 pnpm install
 pnpm dev          # Workers locally (wrangler dev) on port 8788

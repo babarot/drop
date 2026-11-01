@@ -31,6 +31,7 @@ When adding a new concept, update the glossary before the code.
 
 ## Commands
 
+- Node, pnpm and Bun are pinned in `mise.toml` (`mise install`). CI installs them the same way
 - `pnpm typecheck` / `pnpm lint` / `pnpm test` (test builds first, runs vitest on the Workers backend, and then
   runs the same tests on the Bun backend with `pnpm test:bun`. Requires Bun)
 - `pnpm dev` starts it locally (port 8788)
