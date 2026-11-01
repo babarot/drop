@@ -5,6 +5,8 @@
 import type { Migration } from '../src/backend/bun'
 
 export interface Embedded {
+  // The release version (DROP_VERSION at build time; "dev" when unset)
+  version: string
   // URL path (e.g. /sites/index.html) -> path of the file inside the binary
   assets: Map<string, string>
   migrations: Migration[]

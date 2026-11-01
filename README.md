@@ -107,9 +107,13 @@ after `pnpm deploy:config`).
 
 ## The CLI
 
-Run it from the repository with `pnpm cli <command>`, or build a single
-binary with `pnpm build:cli` (written to `dist/drop`) and put it on your
-`PATH`.
+Download the archive for your platform from the
+[releases](https://github.com/babarot/drop/releases) and put `drop` on your
+`PATH`. With Nix, the package is in
+[babarot/nur-packages](https://github.com/babarot/nur-packages) (`drop`).
+
+From the repository, run it with `pnpm cli <command>`, or build a single
+binary with `pnpm build:cli` (written to `dist/drop`).
 
 | Command | What it does |
 |---|---|
@@ -122,6 +126,7 @@ binary with `pnpm build:cli` (written to `dist/drop`) and put it on your
 | `drop status` | Show each synced site, its synced version and any warnings. |
 | `drop login` | Store the credentials for a hosted instance. |
 | `drop serve [--port N]` | Run drop locally on `127.0.0.1` (default port 8789). |
+| `drop version` | Print the version of the binary. |
 
 Each folder directly under the sync directory is one site, named after the
 folder. Files directly under the sync directory are not synced. Deleting a

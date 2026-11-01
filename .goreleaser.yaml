@@ -1,0 +1,54 @@
+# Release the single binary (drop serve and the CLI) for each platform, and update the Nix package in
+# babarot/nur-packages. Run by .github/workflows/release.yaml on a v* tag. ADR-010
+version: 2
+
+# dist/ also holds the entry point and the binary of pnpm build:cli; keep GoReleaser's output apart
+dist: dist/release
+
+before:
+  hooks:
+    # The admin SPA build, then the entry point that embeds it, the migrations and the version
+    - pnpm build
+    - bun scripts/build-cli.ts --entry {{ .Version }}
+
+builds:
+  - builder: bun
+    binary: drop
+    main: dist/drop-entry.ts
+    # No Windows: the CLI's credentials, notifications and paths are written for macOS and Linux
+    targets:
+      - darwin-arm64
+      - darwin-x64
+      - linux-x64
+      - linux-arm64
+
+archives:
+  - formats: ["tar.gz"]
+    name_template: >-
+      {{ .ProjectName }}_
+      {{- title .Os }}_
+      {{- if eq .Arch "amd64" }}x86_64
+      {{- else }}{{ .Arch }}{{ end }}
+
+checksum:
+  name_template: checksums.txt
+
+changelog:
+  sort: asc
+  use: github
+
+release:
+  prerelease: auto
+  draft: false
+
+nix:
+  - repository:
+      owner: babarot
+      name: nur-packages
+      token: "{{ .Env.NUR_GITHUB_TOKEN }}"
+    # A fork without the secret releases the binaries and skips the Nix package
+    skip_upload: '{{ if not (isEnvSet "NUR_GITHUB_TOKEN") }}true{{ end }}'
+    homepage: https://github.com/babarot/drop
+    description: A local-first home for HTML pages
+    license: mit
+    main_program: drop

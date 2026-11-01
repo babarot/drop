@@ -9,12 +9,14 @@
 //   drop status               show sync status and notices
 //   drop login                set the remote's credentials (Access service token)
 //   drop serve [--port N]     run drop without Cloudflare (127.0.0.1 only; default port 8789)
+//   drop version              print the version of this binary (dev when run from source)
 
 import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { DropClient } from './client'
 import { ConfigError, dataDir, isLoopback, loadConfig, stateDir } from './config'
 import { authHeaders, loadCredential, saveCredential } from './credentials'
+import { embedded } from './embedded'
 import { askCredential, detectAuth } from './login'
 import { notifier } from './notify'
 import { pullAll } from './pull'
@@ -155,9 +157,13 @@ async function main(argv: string[]): Promise<number> {
     case 'login':
       await login()
       return 0
+    case 'version':
+    case '--version':
+      console.log(embedded()?.version ?? 'dev')
+      return 0
     default:
       console.log(
-        'usage: drop <push [--force] [folder...] | pull [--theirs] [--include name] [name...] | watch | status | login | serve [--port N]>',
+        'usage: drop <push [--force] [folder...] | pull [--theirs] [--include name] [name...] | watch | status | login | serve [--port N] | version>',
       )
       return command === undefined || command === 'help' ? 0 : 1
   }
