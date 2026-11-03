@@ -27,7 +27,7 @@ When adding a new concept, update the glossary before the code.
 - `app/src/` — the admin SPA (React, under `/sites/`. Protected by Cloudflare Access)
 - `shared/` — definitions imported by both the Worker and the SPA (security settings, menus, theme and so on)
 - `migrations/` — D1 migrations
-- `docs/adr/` — records of design decisions. How to write them: `.claude/rules/adr.md`
+- `docs/adr/` — records of design decisions. How to write them: `.claude/rules/adr.md`. Record a decision that spans the runtimes (the Worker/SSR in `src/`, the SPA in `app/src/`, `shared/` across both), including what is deliberately not shared.
 
 ## Commands
 
