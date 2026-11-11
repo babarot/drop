@@ -492,6 +492,27 @@ body.overlay-open .glass {
   cursor: grabbing;
 }
 
+/* Scaled-down live preview at the top of a card (site-thumb.tsx). The iframe is an absolute,
+   scaled-down canvas, as in .history-preview, and never takes pointer events, so clicks and drags
+   go to the card */
+.card .thumb {
+  position: relative;
+  aspect-ratio: 16 / 10;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+}
+
+.card .thumb iframe {
+  position: absolute;
+  top: 0;
+  left: 0;
+  border: 0;
+  transform-origin: top left;
+  pointer-events: none;
+}
+
 /* The title wraps to at most 2 lines and the rest is truncated (it is a button, so restore a
    text look) */
 .card .title {

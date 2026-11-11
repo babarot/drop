@@ -3,6 +3,7 @@ import { ChevronDown, EllipsisVertical, Folder } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { type SiteMenuItem, siteMenuItems } from '../../../shared/site-menu'
 import type { SiteMeta } from '../types'
+import { SiteThumb } from './site-thumb'
 
 // open is a standalone button in .actions and copy url / copy share link are in the split button in
 // .actions, so they are left out of the ⋮ menu. shared/site-menu.ts is the source of truth for
@@ -254,6 +255,9 @@ export function SiteCard({
       {...draggable.listeners}
       className={`card${draggable.isDragging ? ' dragging' : ''}`}
     >
+      {/* Before the title, so the title's stretched ::after paints over it and a click on the
+          thumbnail opens the preview sheet like the rest of the card */}
+      <SiteThumb site={site} />
       {/* stretched link: ::after spreads the title button over the whole card, so a card click
           opens the preview sheet */}
       <button type="button" className="title" title={site.title} onClick={() => onPreview(site)}>
