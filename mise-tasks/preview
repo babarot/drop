@@ -1,0 +1,63 @@
+#!/usr/bin/env bash
+#MISE description="Serve this checkout on localhost with the Sites in a sync directory, to check a change against real data"
+#USAGE flag "--port <port>" default="8790" help="Port for drop serve"
+#USAGE flag "--dir <dir>" default="~/drop" help="Sync directory whose Sites are pushed in"
+#
+# Starts drop serve from this checkout with a throwaway data directory, pushes the Sites in --dir
+# into it, and prints the admin login URL. Config, sync state and data all live in a work directory
+# under $TMPDIR, so the real config (~/.config/drop), the sync state of the real remote and the
+# default drop serve data are never touched, and nothing is written into --dir.
+# Folders live on the remote, so every Site shows up unfiled.
+#
+# The work directory is fixed per port and recreated on every start. Removing it on exit alone is
+# not enough: on Ctrl-C mise exits at once and takes this script down while the trap is running.
+
+set -euo pipefail
+
+port="${usage_port:-8790}"
+# The port names the work directory removed below, so it must be a plain number
+[[ "$port" =~ ^[0-9]+$ ]] || { echo "preview: invalid --port: $port" >&2; exit 1; }
+dir="${usage_dir:-~/drop}"
+dir="${dir/#\~/$HOME}"
+[[ -d "$dir" ]] || { echo "preview: no such directory: $dir" >&2; exit 1; }
+
+work="${TMPDIR:-/tmp}"
+work="${work%/}/drop-preview-$port"
+rm -rf "$work"
+serve_pid=""
+cleanup() {
+  # || true: under set -e a failing kill or wait (the server already got the Ctrl-C) would end
+  # the trap before the rm
+  if [[ -n "$serve_pid" ]]; then
+    kill "$serve_pid" 2>/dev/null || true
+    wait "$serve_pid" 2>/dev/null || true
+  fi
+  rm -rf "$work"
+}
+trap cleanup EXIT
+trap 'exit 130' INT TERM
+
+mkdir -p "$work/config" "$work/state" "$work/data"
+printf 'remote = "http://127.0.0.1:%s"\ndir = "%s"\n' "$port" "$dir" > "$work/config/config.toml"
+export DROP_CONFIG_DIR="$work/config" DROP_STATE_DIR="$work/state" DROP_DATA_DIR="$work/data"
+
+pnpm build > "$work/build.log" 2>&1 || { cat "$work/build.log" >&2; exit 1; }
+
+bun cli/main.ts serve --port "$port" > "$work/serve.log" 2>&1 &
+serve_pid=$!
+until grep -q '^admin login:' "$work/serve.log"; do
+  if ! kill -0 "$serve_pid" 2>/dev/null; then
+    cat "$work/serve.log" >&2
+    exit 1
+  fi
+  sleep 0.2
+done
+
+echo "pushing $dir ..."
+# Drop the per-Site summary (stdout) and show only the notices of what did not go in (a folder with
+# no Entry and the like)
+bun cli/main.ts push 2>&1 >/dev/null | { grep -v ': created the Site$' || true; }
+
+grep '^admin login:' "$work/serve.log"
+echo "Ctrl-C to stop (the data is removed)"
+wait "$serve_pid"

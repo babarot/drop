@@ -35,6 +35,8 @@ When adding a new concept, update the glossary before the code.
 - `pnpm typecheck` / `pnpm lint` / `pnpm test` (test builds first, runs vitest on the Workers backend, and then
   runs the same tests on the Bun backend with `pnpm test:bun`. Requires Bun)
 - `pnpm dev` starts it locally (port 8788)
+- `mise run preview` serves this checkout with the Sites in `~/drop` (port 8790, a throwaway data directory) to check a
+  change against real data. It prints the admin login URL
 
 ## Invariants
 
