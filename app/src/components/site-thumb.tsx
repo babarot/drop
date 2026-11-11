@@ -25,7 +25,15 @@ function previewUrl(site: SiteMeta): Promise<string> {
 
 // Scaled-down live preview at the top of a card. The iframe is the same sandboxed
 // /p/:id/f/... as the preview sheet, so it shares the isolation contract. It exists only while the
-// card is near the viewport, so a long list does not keep every Page running
+// card is near the viewport, so a long list does not keep every Page running.
+//
+// It loads when the card comes within LOAD_MARGIN of the viewport and is dropped only once the
+// card is UNLOAD_MARGIN away. Private files are served with no-store (src/lib/delivery.ts), so
+// every new iframe fetches the Page again and reruns it; the gap keeps scrolling back and forth
+// from reloading the cards just passed
+const LOAD_MARGIN = '200px 0px'
+const UNLOAD_MARGIN = '200% 0px'
+
 export function SiteThumb({ site }: { site: SiteMeta }) {
   const wrapRef = useRef<HTMLDivElement>(null)
   const [box, setBox] = useState<{ w: number; h: number } | null>(null)
@@ -37,14 +45,24 @@ export function SiteThumb({ site }: { site: SiteMeta }) {
     if (!el) return
     const resize = new ResizeObserver(() => setBox({ w: el.clientWidth, h: el.clientHeight }))
     resize.observe(el)
-    const intersect = new IntersectionObserver(
-      ([entry]) => setVisible(entry?.isIntersecting ?? false),
-      { rootMargin: '200px 0px' },
+    const load = new IntersectionObserver(
+      ([entry]) => {
+        if (entry?.isIntersecting) setVisible(true)
+      },
+      { rootMargin: LOAD_MARGIN },
     )
-    intersect.observe(el)
+    const unload = new IntersectionObserver(
+      ([entry]) => {
+        if (entry && !entry.isIntersecting) setVisible(false)
+      },
+      { rootMargin: UNLOAD_MARGIN },
+    )
+    load.observe(el)
+    unload.observe(el)
     return () => {
       resize.disconnect()
-      intersect.disconnect()
+      load.disconnect()
+      unload.disconnect()
     }
   }, [])
 
