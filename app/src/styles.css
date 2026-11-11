@@ -494,13 +494,17 @@ body.overlay-open .glass {
 
 /* Scaled-down live preview at the top of a card (site-thumb.tsx). The iframe is an absolute,
    scaled-down canvas, as in .history-preview, and never takes pointer events, so clicks and drags
-   go to the card */
+   go to the card.
+   It bleeds to the card's edges like the image of a link card (negative margins cancel the card's
+   padding), so it reads as the card's picture rather than a frame embedded in it */
 .card .thumb {
   position: relative;
   aspect-ratio: 16 / 10;
+  margin: -14px -14px 4px;
   overflow: hidden;
-  border: 1px solid var(--border);
-  border-radius: 6px;
+  border-bottom: 1px solid var(--border);
+  /* The card's radius minus its 1px border */
+  border-radius: 9px 9px 0 0;
   background: var(--bg);
 }
 
