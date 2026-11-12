@@ -60,6 +60,7 @@ Concepts that exist in the current code. Names in the code, the API and D1 match
 | Replace | 差し替え | Adding a new Version to an existing Site. Either send the whole tree (`PUT .../tree`) or send only the changes (`PATCH .../tree`) |
 | Restore | 復元 | Adding the content of a past Version as a new Version (the past Version is not rewritten) |
 | Commit | コミット | After the Objects are placed in R2, settling the Version and the rows of its Files together in one D1 batch (`commitVersion`, `createSite`, `PUT /api/sites/:id/tree`) |
+| Selection | 選択 | The Sites picked on the admin app's list to act on together (moving them to a Folder). It lives only in the SPA's memory and covers only the Sites in the list shown; it is never stored or sent as a unit (`selection`, `SelectionBar`) |
 
 ### Sync
 

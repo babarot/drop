@@ -40,6 +40,8 @@ import { FolderBar } from './components/folder-bar'
 import { MoveDialog } from './components/move-dialog'
 import { PreviewSheet } from './components/preview-sheet'
 import { ReplaceMismatchDialog } from './components/replace-mismatch-dialog'
+import { SelectionBar } from './components/selection-bar'
+import type { SelectHow } from './components/site-card'
 import { SiteList } from './components/site-list'
 import { ThemeToggle } from './components/theme-toggle'
 import { Toast } from './components/toast'
@@ -50,6 +52,7 @@ import { siteDownload } from './lib/download'
 import { type DropPayload, htmlDraft, ingest, type SiteDraft, withEntry } from './lib/ingest'
 import { sendTree } from './lib/upload'
 import type { FolderMeta, FolderSelection, SiteMeta, VersionMeta } from './types'
+import { useMarquee } from './use-marquee'
 import { invalidItem, useUploadQueue } from './use-upload-queue'
 
 // A draft for which matching a re-drop found a same-named site. The user chooses between update and
@@ -71,9 +74,10 @@ interface ToastState {
 // What is being dragged. Used for the DragOverlay preview and for deciding the pills' drop
 // highlight. showDock is the result of checking the folder bar's visibility at drag start
 // (autoScroll is off, so visibility does not change during the drag and the one-time check at start
-// holds to the end)
+// holds to the end). sites is the whole Selection when the drag started on a selected card, and
+// only the dragged card otherwise
 type DragState =
-  | { type: 'site'; site: SiteMeta; showDock: boolean }
+  | { type: 'site'; sites: SiteMeta[]; showDock: boolean }
   | { type: 'folder'; folder: FolderMeta }
   | null
 
@@ -138,8 +142,14 @@ export function App() {
   const [folder, setFolder] = useState<FolderSelection>(null)
   const [folders, setFolders] = useState<FolderMeta[]>([])
   const [unfiledCount, setUnfiledCount] = useState(0)
-  // Target site of the move to folder… dialog
-  const [moveSite, setMoveSite] = useState<SiteMeta | null>(null)
+  // Target sites of the move to folder… dialog (one from a card menu, or the whole Selection)
+  const [moveSites, setMoveSites] = useState<SiteMeta[] | null>(null)
+  const openMove = useCallback((site: SiteMeta) => setMoveSites([site]), [])
+  // The Selection (site ids). Only Sites in the list shown: it is cleared when the Folder or the
+  // search changes and pruned to the list after each refresh
+  const [selection, setSelection] = useState<Set<string>>(() => new Set())
+  // The last card toggled, where a Shift+click range starts
+  const selectionAnchor = useRef<string | null>(null)
   const [dragging, setDragging] = useState<DragState>(null)
 
   // Refetch the site list and the Folder list (counts) together (moves and deletes change both).
@@ -180,11 +190,11 @@ export function App() {
       ? ([historyId, setHistorySite] as const)
       : filesId
         ? ([filesId, setFilesSite] as const)
-        : ([moveId as string, setMoveSite] as const)
+        : ([moveId as string, openMove] as const)
     getSite(id)
       .then(open)
       .catch((e) => setError(e instanceof Error ? e.message : 'failed to load site'))
-  }, [])
+  }, [openMove])
 
   // Run one item; on success remove the entry and return the SiteMeta. On failure set the entry to
   // error and carry on. With target, this is a replace of an existing site rather than a new upload
@@ -595,30 +605,87 @@ export function App() {
     [folders, unfiledCount],
   )
 
-  // Moving a site to a Folder (shared by DnD and the move dialog). Runs silently + undo toast
-  const moveSiteToFolder = useCallback(
-    async (site: SiteMeta, folderId: string | null) => {
-      setMoveSite(null)
+  // Moving sites to a Folder (shared by DnD, the move dialog and the selection bar). Runs silently +
+  // undo toast. Sites already in the Folder are left out. The Selection is cleared when what moved
+  // came from it (dragging a card outside the Selection keeps the Selection)
+  const moveSitesToFolder = useCallback(
+    async (targets: SiteMeta[], folderId: string | null) => {
+      setMoveSites(null)
       setError(null)
-      const prev = site.folderId
+      const moving = targets.filter((s) => s.folderId !== folderId)
+      if (moving.length === 0) return
       const name = folderId === null ? 'unfiled' : (folderNames.get(folderId) ?? 'folder')
-      try {
-        await updateSite(site.id, { folderId })
-        await refresh(query)
-        setToast({
-          message: `Moved "${ellipsize(site.title)}" to ${name}`,
-          undo: async () => {
-            await updateSite(site.id, { folderId: prev })
-            await refresh(query)
-            setToast({ message: 'Undone' })
-          },
-        })
-      } catch (e) {
-        setError(e instanceof Error ? e.message : 'move failed')
+      setSelection((prev) => (moving.some((s) => prev.has(s.id)) ? new Set() : prev))
+      // One PATCH per Site, in parallel. A failure of some leaves the rest moved
+      const results = await Promise.allSettled(moving.map((s) => updateSite(s.id, { folderId })))
+      const moved = moving.filter((_, i) => results[i]?.status === 'fulfilled')
+      await refresh(query)
+      if (moved.length < moving.length) {
+        setError(`${moving.length - moved.length} of ${moving.length} sites could not be moved`)
       }
+      if (moved.length === 0) return
+      const first = moved[0] as SiteMeta
+      const what = moved.length === 1 ? `"${ellipsize(first.title)}"` : `${moved.length} sites`
+      const already = targets.length - moving.length
+      setToast({
+        message: `Moved ${what} to ${name}${already > 0 ? ` (${already} already there)` : ''}`,
+        undo: async () => {
+          await Promise.allSettled(moved.map((s) => updateSite(s.id, { folderId: s.folderId })))
+          await refresh(query)
+          setToast({ message: 'Undone' })
+        },
+      })
     },
     [refresh, query, folderNames],
   )
+
+  // Selecting. Toggle flips one card; range selects every card between the last toggled one and
+  // this one in the list's order (adding to the Selection, as in Finder)
+  const handleSelect = useCallback(
+    (site: SiteMeta, how: SelectHow) => {
+      // Read the anchor now: the updater runs later, after the anchor below has moved to this card
+      const anchor = selectionAnchor.current
+      setSelection((prev) => {
+        const next = new Set(prev)
+        const ids = sites.map((s) => s.id)
+        const from = anchor ? ids.indexOf(anchor) : -1
+        const to = ids.indexOf(site.id)
+        if (how === 'range' && from >= 0 && to >= 0) {
+          const [lo, hi] = from < to ? [from, to] : [to, from]
+          for (const id of ids.slice(lo, hi + 1)) next.add(id)
+        } else if (next.has(site.id)) {
+          next.delete(site.id)
+        } else {
+          next.add(site.id)
+        }
+        return next
+      })
+      selectionAnchor.current = site.id
+    },
+    [sites],
+  )
+
+  const clearSelection = useCallback(() => {
+    setSelection((prev) => (prev.size === 0 ? prev : new Set()))
+  }, [])
+
+  // The Selection covers only the list shown, so a new Folder or search starts it over
+  // biome-ignore lint/correctness/useExhaustiveDependencies: folder and query are the triggers
+  useEffect(() => {
+    clearSelection()
+  }, [folder, query, clearSelection])
+
+  // Drop ids that left the list (deleted, or moved out of the Folder shown)
+  useEffect(() => {
+    setSelection((prev) => {
+      if (prev.size === 0) return prev
+      const ids = new Set(sites.map((s) => s.id))
+      const next = new Set([...prev].filter((id) => ids.has(id)))
+      return next.size === prev.size ? prev : next
+    })
+  }, [sites])
+
+  const selectedSites = useMemo(() => sites.filter((s) => selection.has(s.id)), [sites, selection])
 
   const handleCreateFolder = useCallback(async () => {
     const name = prompt('New folder name')?.trim()
@@ -683,18 +750,27 @@ export function App() {
     return rect.top >= BRAND_OVERLAY_HEIGHT && rect.bottom <= window.innerHeight
   }, [])
 
+  // What a drag of this card carries: the whole Selection (in the list's order) when the card is
+  // in it, and only the card otherwise. The Selection cannot change during a drag, so the start
+  // and the end agree
+  const carriedBy = useCallback(
+    (site: SiteMeta) => (selection.has(site.id) ? selectedSites : [site]),
+    [selection, selectedSites],
+  )
+
   const handleDragStart = useCallback(
     (e: DragStartEvent) => {
       const id = String(e.active.id)
       if (id.startsWith('site-')) {
         const site = sites.find((p) => p.id === id.slice(5))
-        if (site) setDragging({ type: 'site', site, showDock: !isFolderBarVisible() })
+        if (!site) return
+        setDragging({ type: 'site', sites: carriedBy(site), showDock: !isFolderBarVisible() })
       } else if (id.startsWith('folder-')) {
         const f = folders.find((x) => x.id === id.slice(7))
         if (f) setDragging({ type: 'folder', folder: f })
       }
     },
-    [sites, folders, isFolderBarVisible],
+    [sites, folders, carriedBy, isFolderBarVisible],
   )
 
   // Use the active.id prefix to tell a site move from a Folder reorder
@@ -713,8 +789,8 @@ export function App() {
         if (!site) return
         const target =
           overId === 'unfiled' ? null : overId.startsWith('folder-') ? overId.slice(7) : undefined
-        if (target === undefined || target === site.folderId) return
-        void moveSiteToFolder(site, target)
+        if (target === undefined) return
+        void moveSitesToFolder(carriedBy(site), target)
         return
       }
 
@@ -734,7 +810,7 @@ export function App() {
         }
       }
     },
-    [sites, folders, moveSiteToFolder],
+    [sites, folders, carriedBy, moveSitesToFolder],
   )
 
   const conflict = conflicts[0]
@@ -747,7 +823,38 @@ export function App() {
       conflict ||
       entryChoice ||
       replaceConfirm ||
-      moveSite,
+      moveSites,
+  )
+
+  // Esc clears the Selection and ⌘A / Ctrl+A selects every Site in the list, unless typing in a
+  // field or an overlay is open (the overlays handle their own keys)
+  useEffect(() => {
+    if (overlayOpen) return
+    const onKeyDown = (e: KeyboardEvent) => {
+      const t = e.target as HTMLElement | null
+      if (t?.closest('input, textarea, select, [contenteditable="true"]')) return
+      if (e.key === 'Escape') clearSelection()
+      if (e.key === 'a' && (e.metaKey || e.ctrlKey) && sites.length > 0) {
+        e.preventDefault()
+        setSelection(new Set(sites.map((s) => s.id)))
+      }
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [overlayOpen, sites, clearSelection])
+
+  const marquee = useMarquee({
+    enabled: !overlayOpen && dragging === null,
+    selection,
+    onSelect: useCallback((ids: Set<string>) => {
+      setSelection((prev) =>
+        prev.size === ids.size && [...ids].every((id) => prev.has(id)) ? prev : ids,
+      )
+    }, []),
+  })
+  const draggingIds = useMemo(
+    () => (dragging?.type === 'site' ? new Set(dragging.sites.map((s) => s.id)) : undefined),
+    [dragging],
   )
   // The toast's undo: the generic undo (Folder move) takes priority, otherwise the restore-based
   // one
@@ -819,6 +926,9 @@ export function App() {
             sites={sites}
             loading={!loaded}
             folderNames={folder === null ? folderNames : undefined}
+            selection={selection}
+            draggingIds={draggingIds}
+            onSelect={handleSelect}
             onPreview={setPreviewSite}
             onCopied={() => setToast({ message: 'Copied the URL' })}
             onShareLink={handleShareLink}
@@ -828,7 +938,7 @@ export function App() {
             onDownload={handleDownload}
             onHistory={setHistorySite}
             onFiles={setFilesSite}
-            onMove={setMoveSite}
+            onMove={openMove}
           />
         </div>
 
@@ -838,10 +948,21 @@ export function App() {
           <DropDock folders={folders} unfiledCount={unfiledCount} />
         )}
 
-        {/* Preview while dragging. The real element is dimmed, and this one follows the cursor */}
+        {/* Preview while dragging. The real element is dimmed, and this one follows the cursor.
+            Several sites show as a stack with their count */}
         <DragOverlay dropAnimation={null}>
           {dragging?.type === 'site' ? (
-            <div className="drag-preview">{dragging.site.title}</div>
+            dragging.sites.length > 1 ? (
+              <div className="drag-stack">
+                <span className="drag-stack-ghost" />
+                <div className="drag-preview">
+                  {ellipsize(dragging.sites[0]?.title ?? '', 24)} +{dragging.sites.length - 1}
+                </div>
+                <span className="drag-count">{dragging.sites.length}</span>
+              </div>
+            ) : (
+              <div className="drag-preview">{dragging.sites[0]?.title}</div>
+            )
           ) : dragging?.type === 'folder' ? (
             <div className="folder-pill selected drag-preview-pill">
               <Folder size={14} />
@@ -873,7 +994,7 @@ export function App() {
           onDownload={handleDownload}
           onHistory={setHistorySite}
           onFiles={setFilesSite}
-          onMove={setMoveSite}
+          onMove={openMove}
         />
       )}
 
@@ -915,13 +1036,25 @@ export function App() {
         />
       )}
 
-      {moveSite && (
+      {moveSites && (
         <MoveDialog
-          site={moveSite}
+          sites={moveSites}
           folders={folders}
           unfiledCount={unfiledCount}
-          onMove={(folderId) => void moveSiteToFolder(moveSite, folderId)}
-          onCancel={() => setMoveSite(null)}
+          onMove={(folderId) => void moveSitesToFolder(moveSites, folderId)}
+          onCancel={() => setMoveSites(null)}
+        />
+      )}
+
+      {marquee && (
+        <div
+          className="marquee"
+          style={{
+            left: marquee.left,
+            top: marquee.top,
+            width: marquee.width,
+            height: marquee.height,
+          }}
         />
       )}
 
@@ -932,6 +1065,16 @@ export function App() {
           onUpdate={handleMismatchUpdate}
           onCreateNew={handleMismatchCreateNew}
           onCancel={() => setReplaceConfirm(null)}
+        />
+      )}
+
+      {/* Shares the toast's spot, so it steps aside while a toast is shown (a move clears the
+          Selection and shows its toast) and during a drag (the dock is there) */}
+      {selection.size > 0 && !toast && !dragging && !overlayOpen && (
+        <SelectionBar
+          count={selection.size}
+          onMove={() => setMoveSites(selectedSites)}
+          onClear={clearSelection}
         />
       )}
 

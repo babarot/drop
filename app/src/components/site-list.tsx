@@ -1,5 +1,5 @@
 import type { SiteMeta } from '../types'
-import { SiteCard } from './site-card'
+import { type SelectHow, SiteCard } from './site-card'
 
 interface Props {
   sites: SiteMeta[]
@@ -7,6 +7,10 @@ interface Props {
   loading?: boolean
   // Lookup for showing each card's Folder name in the all-sites view (not shown if undefined)
   folderNames?: Map<string, string>
+  selection: Set<string>
+  // Sites carried by the drag in progress (dimmed, like the card being dragged)
+  draggingIds?: Set<string>
+  onSelect: (site: SiteMeta, how: SelectHow) => void
   onPreview: (site: SiteMeta) => void
   onCopied: () => void
   onShareLink: (site: SiteMeta) => void
@@ -23,6 +27,9 @@ export function SiteList({
   sites,
   loading,
   folderNames,
+  selection,
+  draggingIds,
+  onSelect,
   onPreview,
   onCopied,
   onShareLink,
@@ -51,11 +58,15 @@ export function SiteList({
     return <p className="empty">No sites yet. Drop an HTML file above.</p>
   }
   return (
-    <div className="grid">
+    <div className={`grid${selection.size > 0 ? ' selecting' : ''}`}>
       {sites.map((site) => (
         <SiteCard
           key={site.id}
           site={site}
+          selected={selection.has(site.id)}
+          selecting={selection.size > 0}
+          dimmed={draggingIds?.has(site.id) ?? false}
+          onSelect={onSelect}
           folderName={site.folderId !== null ? folderNames?.get(site.folderId) : undefined}
           onPreview={onPreview}
           onCopied={onCopied}

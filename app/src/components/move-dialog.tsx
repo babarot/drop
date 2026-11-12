@@ -3,17 +3,18 @@ import { useEffect } from 'react'
 import { useScrollLock } from '../scroll-lock'
 import type { FolderMeta, SiteMeta } from '../types'
 
-// Destination picker opened from "move to folder…" in the card menu.
+// Destination picker opened from "move to folder…" in the card menu, or from move to… in the
+// selection bar for the whole Selection.
 // The main way to move without DnD (for keyboard users and users who miss the long-press drag)
 interface Props {
-  site: SiteMeta
+  sites: SiteMeta[]
   folders: FolderMeta[]
   unfiledCount: number
   onMove: (folderId: string | null) => void
   onCancel: () => void
 }
 
-export function MoveDialog({ site, folders, unfiledCount, onMove, onCancel }: Props) {
+export function MoveDialog({ sites, folders, unfiledCount, onMove, onCancel }: Props) {
   useScrollLock()
 
   useEffect(() => {
@@ -37,9 +38,12 @@ export function MoveDialog({ site, folders, unfiledCount, onMove, onCancel }: Pr
   return (
     <div className="overlay">
       <div className="dialog" role="dialog" aria-modal="true">
-        <h2>Move "{site.title}" to</h2>
+        <h2>
+          {sites.length === 1 ? `Move "${sites[0]?.title}" to` : `Move ${sites.length} sites to`}
+        </h2>
         {choices.map((c) => {
-          const current = site.folderId === c.id
+          // current only when every Site is already there (otherwise some of them can still move)
+          const current = sites.every((s) => s.folderId === c.id)
           return (
             <button
               key={c.id ?? 'unfiled'}

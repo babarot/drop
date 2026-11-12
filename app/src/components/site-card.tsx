@@ -1,5 +1,5 @@
 import { useDraggable } from '@dnd-kit/core'
-import { ChevronDown, EllipsisVertical, Folder } from 'lucide-react'
+import { Check, ChevronDown, EllipsisVertical, Folder } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { type SiteMenuItem, siteMenuItems } from '../../../shared/site-menu'
 import type { SiteMeta } from '../types'
@@ -13,8 +13,20 @@ const HIDDEN_IN_LIST = ['open', 'copy-url', 'share-link'] as const
 // Items shown in the split button's dropdown (in this order)
 const COPY_KEYS = ['copy-url', 'share-link'] as const
 
+// How a click adds to the Selection: toggle this card, or select the range from the last card
+// toggled (Shift)
+export type SelectHow = 'toggle' | 'range'
+
 interface Props {
   site: SiteMeta
+  // In the Selection
+  selected: boolean
+  // Any Site is selected. While selecting, a plain click on the card toggles it and only the title
+  // text opens the preview
+  selecting: boolean
+  // Carried along by a drag that started on another selected card (dimmed like the dragged one)
+  dimmed: boolean
+  onSelect: (site: SiteMeta, how: SelectHow) => void
   // Label showing the owning Folder in the all-sites view (not shown if undefined)
   folderName?: string
   onPreview: (site: SiteMeta) => void
@@ -44,6 +56,10 @@ function formatDate(iso: string): string {
 
 export function SiteCard({
   site,
+  selected,
+  selecting,
+  dimmed,
+  onSelect,
   folderName,
   onPreview,
   onCopied,
@@ -248,19 +264,63 @@ export function SiteCard({
     }
   }
 
+  // Clicks on the card body. The title button handles the preview itself (and its click bubbles
+  // here), so this only handles the selecting cases: a modifier click anywhere, or any click
+  // outside the title while selecting. The controls in .actions and the check are left alone
+  const onCardClick = (e: React.MouseEvent) => {
+    const target = e.target as Element
+    if (target.closest('.actions, .select-check')) return
+    if (e.shiftKey) {
+      onSelect(site, 'range')
+    } else if (e.metaKey || e.ctrlKey) {
+      onSelect(site, 'toggle')
+    } else if (selecting && !target.closest('.title')) {
+      onSelect(site, 'toggle')
+    }
+  }
+
   return (
+    // biome-ignore lint/a11y/noStaticElementInteractions: dnd-kit's attributes give it role="button"; the click is a mouse shortcut, and .select-check is the keyboard path
+    // biome-ignore lint/a11y/useKeyWithClickEvents: same as above, keyboard users select with .select-check
     <div
       ref={draggable.setNodeRef}
       {...draggable.attributes}
       {...draggable.listeners}
-      className={`card${draggable.isDragging ? ' dragging' : ''}`}
+      data-site-id={site.id}
+      className={`card${draggable.isDragging || dimmed ? ' dragging' : ''}${selected ? ' selected' : ''}`}
+      onClick={onCardClick}
+      // Shift+click would otherwise select the text between the two clicks. dnd-kit's MouseSensor
+      // listens on onMouseDown too, so pass the event on to it
+      onMouseDown={(e) => {
+        if (e.shiftKey) e.preventDefault()
+        draggable.listeners?.onMouseDown?.(e)
+      }}
     >
+      {/* The way into the Selection without a modifier key (and on touch, the only way). Its
+          z-index puts it above the title's stretched ::after, so the click reaches it */}
+      <button
+        type="button"
+        className="select-check"
+        aria-label={selected ? `deselect "${site.title}"` : `select "${site.title}"`}
+        aria-pressed={selected}
+        onClick={(e) => onSelect(site, e.shiftKey ? 'range' : 'toggle')}
+      >
+        <Check size={13} strokeWidth={3} />
+      </button>
       {/* Before the title, so the title's stretched ::after paints over it and a click on the
           thumbnail opens the preview sheet like the rest of the card */}
       <SiteThumb site={site} />
       {/* stretched link: ::after spreads the title button over the whole card, so a card click
           opens the preview sheet */}
-      <button type="button" className="title" title={site.title} onClick={() => onPreview(site)}>
+      <button
+        type="button"
+        className="title"
+        title={site.title}
+        onClick={(e) => {
+          // A modifier click selects instead (handled by onCardClick)
+          if (!(e.shiftKey || e.metaKey || e.ctrlKey)) onPreview(site)
+        }}
+      >
         {site.title}
       </button>
       <div className="meta">

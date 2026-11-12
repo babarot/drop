@@ -550,6 +550,158 @@ body.overlay-open .glass {
   inset: 0;
 }
 
+/* Several sites in the DragOverlay: the title card with one more card peeking out behind it and
+   the count on its corner */
+.drag-stack {
+  position: relative;
+  display: inline-block;
+}
+
+.drag-stack .drag-preview {
+  position: relative;
+  z-index: 1;
+}
+
+.drag-stack-ghost {
+  position: absolute;
+  inset: 0;
+  transform: translate(5px, 5px);
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--bg-elevated);
+  box-shadow: var(--glass-shadow);
+}
+
+.drag-count {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  z-index: 2;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 10px;
+  background: var(--accent);
+  color: var(--bg-elevated);
+  font-size: 11px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* A card in the Selection */
+.card.selected {
+  border-color: var(--accent);
+  box-shadow:
+    0 0 0 1px var(--accent),
+    0 0 16px var(--accent-glow);
+}
+
+/* The check at the card's top right: the way into the Selection. Hidden until the card is hovered
+   or focused, and always shown while selecting (so every card shows it can be added) and on touch
+   (no hover). Hidden by opacity, not display, so it stays reachable with Tab */
+.card .select-check {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 2;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  border: 1.5px solid var(--border-strong);
+  background: var(--bg-elevated);
+  color: transparent;
+  cursor: pointer;
+  opacity: 0;
+  transition:
+    opacity 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.card:hover .select-check,
+.card .select-check:focus-visible,
+.grid.selecting .select-check {
+  opacity: 1;
+}
+
+@media (hover: none) {
+  .card .select-check {
+    opacity: 1;
+  }
+}
+
+.card .select-check:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.card.selected .select-check {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--bg-elevated);
+}
+
+/* While selecting, a click on the card toggles it: the title stops stretching over the card, and
+   only its own text opens the preview */
+.grid.selecting .card .title::after {
+  display: none;
+}
+
+.grid.selecting .card {
+  cursor: pointer;
+}
+
+/* Rubber-band rectangle while dragging from empty space (use-marquee.ts) */
+.marquee {
+  position: fixed;
+  z-index: 150;
+  pointer-events: none;
+  border: 1px solid var(--accent);
+  border-radius: 2px;
+  background: var(--accent-glow);
+}
+
+body.marquee-active {
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* Bar at the bottom while selecting (selection-bar.tsx). It takes the toast's spot; App hides it
+   while a toast or the drop dock is shown */
+.selection-bar {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  max-width: calc(100vw - 32px);
+  padding: 8px 10px 8px 14px;
+  border-radius: 8px;
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.selection-hint {
+  color: var(--text-muted);
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+@media (max-width: 480px) {
+  .selection-hint {
+    display: none;
+  }
+}
+
 /* Put the action buttons in front of the anchor so it does not steal their clicks */
 .card .actions {
   position: relative;
